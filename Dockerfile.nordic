@@ -1,0 +1,32 @@
+FROM ubuntu:24.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV ZEPHYR_TOOLCHAIN_VARIANT=zephyr
+ENV PATH="/opt/venv/bin:$PATH"
+
+# ── 建置依賴 ──────────────────────────────────────────────────────────────────
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git cmake ninja-build gperf ccache dfu-util \
+    python3-pip python3-setuptools python3-wheel python3-venv python3-dev \
+    xz-utils file make gcc build-essential libsdl2-dev \
+    wget curl unzip \
+  && rm -rf /var/lib/apt/lists/*
+
+# ── Python 虛擬環境 ───────────────────────────────────────────────────────────
+RUN python3 -m venv /opt/venv \
+  && pip install --no-cache-dir west wheel
+
+# ── Zephyr Python 需求 ────────────────────────────────────────────────────────
+COPY zephyrproject/zephyr/scripts /tmp/scripts
+RUN pip install --no-cache-dir -r /tmp/scripts/requirements.txt
+
+# ── Zephyr SDK 1.0.0 (ARM64 最小化) ──────────────────────────────────────────
+ARG SDK_VER=1.0.0
+RUN wget -q \
+    "https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v${SDK_VER}/zephyr-sdk-${SDK_VER}_linux-aarch64_minimal.tar.xz" \
+    -O /tmp/zephyr-sdk.tar.xz \
+  && tar xf /tmp/zephyr-sdk.tar.xz -C /opt \
+  && rm /tmp/zephyr-sdk.tar.xz \
+  && /opt/zephyr-sdk-${SDK_VER}/setup.sh -t arm-zephyr-eabi
+
+WORKDIR /workspace

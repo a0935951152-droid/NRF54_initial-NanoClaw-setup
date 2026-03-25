@@ -1,0 +1,23 @@
+# 編譯產物
+build/
+*.hex
+*.elf
+*.bin
+*.map
+
+# Python 虛擬環境
+.venv/
+__pycache__/
+*.pyc
+
+# Zephyr 源碼（透過 west 管理，不納入版控）
+zephyrproject/
+
+# 編輯器暫存
+.vscode/
+.idea/
+*.swp
+*~
+
+# macOS
+.DS_Store
