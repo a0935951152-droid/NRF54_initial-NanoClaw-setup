@@ -52,7 +52,7 @@ command -v node    >/dev/null 2>&1 || warn "找不到 node/npm，Claude Code 安
 success "基礎環境檢查通過 (arch: $ARCH)"
 
 # ── 工作目錄 ──────────────────────────────────────────────────────────────────
-WORKDIR="$HOME/nanoclaw"
+WORKDIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 step "建立工作目錄：$WORKDIR"
 mkdir -p "$WORKDIR/src"
 cd "$WORKDIR"
@@ -130,8 +130,8 @@ else
       info "初始化虛擬 Git 儲存庫（west 依賴 Git，ZIP 解壓後必須補上）..."
       cd zephyr
       git init -q
-      git add .
-      git commit -qm "Initial commit from ZIP"
+      # 用 --allow-empty 跳過 git add，避免 70,000+ 檔案 index 耗費 10+ 分鐘
+      git commit -q --allow-empty -m "Initial commit from ZIP"
       cd ..
 
 
@@ -143,7 +143,9 @@ else
 
   info "west update（淺層，防斷線）..."
   cd "$ZEPHYR_DIR"
-  west update --narrow -o=--depth=1
+  west update --narrow -o=--depth=1 || {
+    warn "west update 出現警告，部分模組可能未更新，繼續執行..."
+  }
   cd "$WORKDIR"
   success "第二階段完成"
 fi
@@ -199,18 +201,13 @@ else
   success "第四階段完成"
 fi
 
-# ── 第五階段：複製 CLAUDE.md ──────────────────────────────────────────────────
-step "第五階段：部署 CLAUDE.md 指導原則"
+# ── 第五階段：檢查 CLAUDE.md ──────────────────────────────────────────────────
+step "第五階段：確認 CLAUDE.md 指導原則"
 
 if [[ -f "$WORKDIR/CLAUDE.md" ]]; then
-  info "CLAUDE.md 已存在，略過"
+  success "CLAUDE.md 已就緒"
 else
-  if [[ -f "$(dirname "$0")/CLAUDE.md" ]]; then
-    cp "$(dirname "$0")/CLAUDE.md" "$WORKDIR/CLAUDE.md"
-    success "CLAUDE.md 已複製至 $WORKDIR"
-  else
-    warn "找不到 CLAUDE.md，請手動放置至 $WORKDIR/CLAUDE.md"
-  fi
+  warn "找不到 CLAUDE.md，AI 代理將缺乏指導原則！"
 fi
 
 # ── 第六階段：自動 activate（寫入 .bashrc）────────────────────────────────────
@@ -218,22 +215,23 @@ step "第六階段：設定開機自動 activate 虛擬環境"
 
 BASHRC="$HOME/.bashrc"
 MARKER="# >>> NanoClaw venv auto-activate <<<"
-ACTIVATE_BLOCK="${MARKER}
-# 若在 ~/nanoclaw 目錄下或其子目錄，自動啟用虛擬環境
-_NANOCLAW_VENV=\"\$HOME/nanoclaw/.venv/bin/activate\"
-if [[ -f \"\$_NANOCLAW_VENV\" ]]; then
-  source \"\$_NANOCLAW_VENV\"
-  # 進入 nanoclaw 時自動 cd（選用：若想每次開 shell 都在工作目錄可取消註解）
-  # cd \"\$HOME/nanoclaw\"
-fi
-unset _NANOCLAW_VENV
-# <<< NanoClaw venv auto-activate <<<"
 
 if grep -qF "$MARKER" "$BASHRC" 2>/dev/null; then
   info ".bashrc 已有 NanoClaw auto-activate 設定，略過"
 else
-  echo "" >> "$BASHRC"
-  echo "$ACTIVATE_BLOCK" >> "$BASHRC"
+  # 注意：這裡使用無引號的 BASHRC_BLOCK，讓 $WORKDIR 在安裝時立刻展開成絕對路徑！
+  # 同時用 \$ 逃脫環境變數，讓它們在終端機啟動時才執行。
+  cat >> "$BASHRC" << BASHRC_BLOCK
+
+# >>> NanoClaw venv auto-activate <<<
+# 自動啟用 NanoClaw 虛擬環境 (安裝路徑: $WORKDIR)
+_NANOCLAW_VENV="$WORKDIR/.venv/bin/activate"
+if [[ -f "\$_NANOCLAW_VENV" ]]; then
+  source "\$_NANOCLAW_VENV"
+fi
+unset _NANOCLAW_VENV
+# <<< NanoClaw venv auto-activate <<<
+BASHRC_BLOCK
   success "已寫入 $BASHRC，下次開 shell 自動 activate"
 fi
 

@@ -19,7 +19,8 @@ warn()    { echo -e "${YELLOW}[WARN]${NC}  $*"; }
 BASHRC="$HOME/.bashrc"
 MARKER="# >>> NanoClaw venv auto-activate <<<"
 END_MARKER="# <<< NanoClaw venv auto-activate <<<"
-VENV_PATH="$HOME/nanoclaw/.venv/bin/activate"
+WORKDIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+VENV_PATH="$WORKDIR/.venv/bin/activate"
 
 # ── 移除模式 ──────────────────────────────────────────────────────────────────
 if [[ "${1:-}" == "--remove" ]]; then
@@ -45,17 +46,18 @@ if grep -qF "$MARKER" "$BASHRC" 2>/dev/null; then
   exit 0
 fi
 
-cat >> "$BASHRC" << EOF
+# 用無引號 BASHRC_BLOCK，讓 $WORKDIR 在安裝時鎖定
+cat >> "$BASHRC" << BASHRC_BLOCK
 
-${MARKER}
+# >>> NanoClaw venv auto-activate <<<
 # 每次開啟新 shell 自動啟用 NanoClaw 虛擬環境
-_NANOCLAW_VENV="\$HOME/nanoclaw/.venv/bin/activate"
+_NANOCLAW_VENV="$WORKDIR/.venv/bin/activate"
 if [[ -f "\$_NANOCLAW_VENV" ]]; then
   source "\$_NANOCLAW_VENV"
 fi
 unset _NANOCLAW_VENV
-${END_MARKER}
-EOF
+# <<< NanoClaw venv auto-activate <<<
+BASHRC_BLOCK
 
 success "已寫入 $BASHRC"
 echo ""

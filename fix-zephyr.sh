@@ -32,7 +32,7 @@ for arg in "$@"; do
 done
 
 # ── 路徑設定 ──────────────────────────────────────────────────────────────────
-WORKDIR="$HOME/nanoclaw"
+WORKDIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ZEPHYR_DIR="$WORKDIR/zephyrproject"
 VENV="$WORKDIR/.venv"
 
@@ -104,10 +104,11 @@ step "Step 3.5：初始化虛擬 Git 儲存庫（west 依賴 Git）"
 info "ZIP 解壓後無 .git 目錄，需補上才能讓 west 正常運作..."
 cd zephyr
 git init -q
-git add .
-git commit -qm "Initial commit from ZIP"
+# 用 commit --allow-empty 跳過 git add（70,000+ 檔案 add 在 Pi 上需要 10+ 分鐘）
+# west 只需要 .git 目錄存在即可，不需要實際追蹤所有檔案
+git commit -q --allow-empty -m "Initial commit from ZIP"
 cd ..
-success "Git 初始化完成"
+success "Git 初始化完成（略過 git add，節省約 10 分鐘）"
 
 
 # ── Step 4：west 本地認領 ─────────────────────────────────────────────────────
