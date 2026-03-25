@@ -24,14 +24,14 @@ declare -A BOARD_MAP=(
   [nrf54l15]="nrf54l15dk/nrf54l15/cpuapp"
   [nrf52840]="nrf52840dk/nrf52840"
   [nrf52833]="nrf52833dk/nrf52833"
-  [nrf52]="nrf52dk/nrf52"
+  [nrf52832]="nrf52dk/nrf52832"
 )
 
 declare -A FLASH_CORE=(
   [nrf54l15]="--core Application"
   [nrf52840]=""
   [nrf52833]=""
-  [nrf52]=""
+  [nrf52832]=""
 )
 
 # ── 參數解析 ──────────────────────────────────────────────────────────────────

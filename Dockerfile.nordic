@@ -22,8 +22,7 @@ RUN pip install --no-cache-dir -r /tmp/scripts/requirements.txt
 
 # ── Zephyr SDK 1.0.0 (ARM64 最小化) ──────────────────────────────────────────
 ARG SDK_VER=1.0.0
-RUN wget -q \
-    "https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v${SDK_VER}/zephyr-sdk-${SDK_VER}_linux-aarch64_minimal.tar.xz" \
+RUN wget -q "https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v${SDK_VER}/zephyr-sdk-${SDK_VER}_linux-aarch64_minimal.tar.xz" \
     -O /tmp/zephyr-sdk.tar.xz \
   && tar xf /tmp/zephyr-sdk.tar.xz -C /opt \
   && rm /tmp/zephyr-sdk.tar.xz \

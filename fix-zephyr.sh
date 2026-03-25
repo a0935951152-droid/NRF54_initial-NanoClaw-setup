@@ -98,6 +98,18 @@ mv zephyr-main zephyr
 rm main.zip
 success "解壓縮完成"
 
+# ── Step 3.5：初始化虛擬 Git 儲存庫 ────────────────────────────────────────
+step "Step 3.5：初始化虛擬 Git 儲存庫（west 依賴 Git）"
+
+info "ZIP 解壓後無 .git 目錄，需補上才能讓 west 正常運作..."
+cd zephyr
+git init -q
+git add .
+git commit -qm "Initial commit from ZIP"
+cd ..
+success "Git 初始化完成"
+
+
 # ── Step 4：west 本地認領 ─────────────────────────────────────────────────────
 step "Step 4：west init -l（本地認領）"
 

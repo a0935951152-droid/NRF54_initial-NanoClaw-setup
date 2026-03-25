@@ -17,28 +17,28 @@
 
 請先確認人類指定的目標開發板。若未特別指定，**預設為 nRF54L15**。
 
-| Profile | 開發板 | 編譯參數 `<BOARD>` | 燒錄參數 |
-|---------|--------|-------------------|---------|
-| **A（預設）** | nRF54L15 | `nrf54l15dk/nrf54l15/cpuapp` | `--core Application` |
-| **B** | nRF52840 | `nrf52840dk/nrf52840` | 無需額外參數 |
-| **B** | nRF52833 | `nrf52833dk/nrf52833` | 無需額外參數 |
+| 短名 | 開發板 | 完整 Board String |
+|------|--------|-------------------|
+| `nrf54l15`（預設） | nRF54L15-DK | `nrf54l15dk/nrf54l15/cpuapp` |
+| `nrf52840` | nRF52840-DK | `nrf52840dk/nrf52840` |
+| `nrf52833` | nRF52833-DK | `nrf52833dk/nrf52833` |
+| `nrf52832` | nRF52-DK | `nrf52dk/nrf52832` |
 
 ---
 
-## 🛠️ 第三天條：模組化編譯指令 (West Build)
+## 🛠️ 第三天條：編譯與自動化燒錄 (Build & Flash)
 
-只能呼叫外部 Docker 容器代勞。請使用以下相對路徑指令（`<BOARD>` 替換為上方 Profile 中的參數）：
+**禁止直接呼叫 `docker` 或 `nrfutil` 指令！** 本專案已封裝專屬編譯腳本。
+當人類要求「編譯」或「燒錄」時，請一律呼叫 `scripts/build.sh`。
 
-```bash
-docker run --rm \
-  -v $PWD:/workspace \
-  -w /workspace/zephyrproject \
-  nordic-build-arm64 \
-  west build -p always \
-    -d /workspace/build \
-    -b <BOARD> \
-    /workspace/src
-```
+| 情境 | 指令 |
+|------|------|
+| 只編譯（預設 nRF54L15） | `bash scripts/build.sh nrf54l15` |
+| 編譯 + 燒錄 | `bash scripts/build.sh nrf54l15 --flash` |
+| 清除後重新編譯 + 燒錄 | `bash scripts/build.sh nrf54l15 --clean --flash` |
+| 其他板子 | `bash scripts/build.sh nrf52840 --flash` |
+
+> 腳本會自動掛載 Docker 執行 `west build`，`--flash` 時自動偵測開發板並燒錄，無需手動操作。
 
 ---
 
@@ -53,37 +53,18 @@ docker run --rm \
 
 ---
 
-## ⚡ 第五天條：自動化燒錄腳本 (Auto-Flash)
-
-當人類要求「編譯並燒錄」或「測試」時，在 Docker 編譯成功後，於**本機端**執行以下腳本：
-
-```bash
-if nrfutil device list | grep -qi "j-link\|segger\|serial"; then
-    echo "[Auto-Flash] 偵測到開發板，開始燒錄..."
-    if [ -f "$PWD/build/zephyr/merged.hex" ]; then
-        nrfutil device program \
-          --firmware "$PWD/build/zephyr/merged.hex" \
-          --core Application
-    else
-        nrfutil device program \
-          --firmware "$PWD/build/zephyr/zephyr.hex" \
-          --core Application
-    fi
-else
-    echo "[Auto-Flash] ⚠️ 未偵測到開發板，已取消燒錄。"
-fi
-```
-
----
-
 ## 📁 工作區結構
 
 ```
 ~/nanoclaw/
-├── src/            ← 你的應用程式源碼（AI 可修改）
-├── build/          ← 編譯產物（自動生成，勿手動修改）
-├── zephyrproject/  ← Zephyr 源碼（禁止修改）
-├── .venv/          ← Python 虛擬環境
+├── src/               ← 你的應用程式源碼（AI 可修改）
+├── build/             ← 編譯產物（自動生成，勿手動修改）
+├── zephyrproject/     ← Zephyr 源碼（禁止修改）
+├── .venv/             ← Python 虛擬環境
+├── scripts/
+│   ├── build.sh       ← 編譯 & 燒錄（唯一入口）
+│   ├── fix-zephyr.sh  ← 下載失敗救援
+│   └── setup-autoactivate.sh
 ├── Dockerfile.nordic  ← 編譯容器定義（禁止修改）
-└── CLAUDE.md       ← 本文件（AI 規範）
+└── CLAUDE.md          ← 本文件（AI 規範）
 ```

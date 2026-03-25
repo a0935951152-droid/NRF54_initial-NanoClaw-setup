@@ -127,6 +127,14 @@ else
       mv zephyr-main zephyr
       rm main.zip
 
+      info "初始化虛擬 Git 儲存庫（west 依賴 Git，ZIP 解壓後必須補上）..."
+      cd zephyr
+      git init -q
+      git add .
+      git commit -qm "Initial commit from ZIP"
+      cd ..
+
+
       info "west 本地認領 (west init -l)..."
       west init -l zephyr
       cd "$WORKDIR"
