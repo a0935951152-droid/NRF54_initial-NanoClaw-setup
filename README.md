@@ -43,7 +43,10 @@ bash setup.sh
 bash setup.sh --skip-zephyr   # 跳過 Zephyr 下載（已有時使用）
 bash setup.sh --skip-docker   # 跳過 Docker 建置
 bash setup.sh --skip-flash    # 跳過 nrfutil 安裝
+bash setup.sh --git           # Zephyr 改用 git clone（預設為 ZIP 防斷線模式）
 ```
+
+> **預設行為：** Zephyr 核心使用 ZIP 下載 + `west init -l` 本地認領，避免 Pi 的網路環境在 git clone 時斷線。
 
 ### 3. 啟動 AI 開發代理
 
@@ -88,6 +91,32 @@ bash scripts/build.sh nrf54l15 --clean --flash
 
 ---
 
+## 🔧 Zephyr 下載斷線救援
+
+遇到以下錯誤時：
+
+```
+error: RPC failed; curl 92 HTTP/2 stream was not closed cleanly
+error: RPC failed; curl 56 Recv failure: Connection timed out
+fatal: early EOF
+```
+
+執行一鍵救援腳本：
+
+```bash
+bash scripts/fix-zephyr.sh
+```
+
+已下載到一半的 ZIP 可用 `--resume` 跳過重新下載：
+
+```bash
+bash scripts/fix-zephyr.sh --resume
+```
+
+**原理：** 完全放棄 `git clone`，改用 `wget` 下載整包 ZIP，解壓後透過 `west init -l`（本地認領）讓 west 接管，再用 `--depth=1` 淺層更新附屬套件，大幅降低網路要求。
+
+---
+
 ## 專案結構
 
 ```
@@ -96,7 +125,8 @@ nanoclaw/
 ├── Dockerfile.nordic    ← ARM64 編譯容器（請勿手動修改）
 ├── CLAUDE.md            ← AI 代理指導原則
 ├── scripts/
-│   └── build.sh         ← 編譯 & 燒錄輔助腳本
+│   ├── build.sh         ← 編譯 & 燒錄輔助腳本
+│   └── fix-zephyr.sh   ← Zephyr 下載斷線救援腳本
 ├── src/                 ← 你的應用程式（範例：流水燈）
 │   ├── CMakeLists.txt
 │   ├── prj.conf

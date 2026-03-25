@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # =============================================================================
 #  NanoClaw Setup — 一鍵建置腳本
-#  用法: bash setup.sh [--skip-zephyr] [--skip-docker] [--skip-flash]
+#  用法: bash setup.sh [--skip-zephyr] [--skip-docker] [--skip-flash] [--git]
 # =============================================================================
 set -euo pipefail
 
@@ -30,6 +30,7 @@ for arg in "$@"; do
       echo "  --skip-zephyr   跳過 Zephyr 源碼下載"
       echo "  --skip-docker   跳過 Docker 映像檔建置"
       echo "  --skip-flash    跳過 nrfutil 燒錄工具安裝"
+      echo "  --git           Zephyr 改用 git clone（網路穩定時使用，預設為 ZIP）"
       exit 0 ;;
     *) warn "未知參數: $arg，略過" ;;
   esac
@@ -85,24 +86,55 @@ success "第一階段完成"
 if [[ "$SKIP_ZEPHYR" == "true" ]]; then
   warn "已跳過 Zephyr 下載 (--skip-zephyr)"
 else
-  step "第二階段：下載 Zephyr 核心（淺層複製）"
+  step "第二階段：下載 Zephyr 核心"
 
-  if [[ -d "$WORKDIR/zephyrproject/.west" ]]; then
-    info "zephyrproject 已存在，跳過 west init"
+  # 安裝 west（虛擬環境）
+  python3 -m venv "$WORKDIR/.venv"
+  # shellcheck disable=SC1091
+  source "$WORKDIR/.venv/bin/activate"
+  pip install -q west
+
+  ZEPHYR_DIR="$WORKDIR/zephyrproject"
+  mkdir -p "$ZEPHYR_DIR"
+
+  if [[ -d "$ZEPHYR_DIR/.west" ]]; then
+    info "zephyrproject 已存在，跳過下載直接 west update"
   else
-    python3 -m venv "$WORKDIR/.venv"
-    # shellcheck disable=SC1091
-    source "$WORKDIR/.venv/bin/activate"
-    pip install -q west
+    # ── 方法選擇：優先 ZIP，加上 --git 旗標可改用 git clone ──────────────────
+    USE_GIT=false
+    for arg in "$@"; do [[ "$arg" == "--git" ]] && USE_GIT=true; done
 
-    west init \
-      -m https://github.com/zephyrproject-rtos/zephyr \
-      --mr main \
-      "$WORKDIR/zephyrproject"
+    if [[ "$USE_GIT" == "true" ]]; then
+      # 方法 B：git clone（網路穩定時使用）
+      info "方法 B：git clone 淺層複製..."
+      west init \
+        -m https://github.com/zephyrproject-rtos/zephyr \
+        --mr main \
+        "$ZEPHYR_DIR"
+    else
+      # 方法 A：ZIP 暴力下載（預設，斷線環境首選）
+      info "方法 A：ZIP 暴力下載（防斷線模式）..."
+      command -v unzip >/dev/null 2>&1 || sudo apt-get install -y -qq unzip
+
+      cd "$ZEPHYR_DIR"
+      info "下載 Zephyr main.zip（可能需要數分鐘）..."
+      wget -q --show-progress \
+        https://github.com/zephyrproject-rtos/zephyr/archive/refs/heads/main.zip \
+        -O main.zip
+
+      info "解壓縮..."
+      unzip -q main.zip
+      mv zephyr-main zephyr
+      rm main.zip
+
+      info "west 本地認領 (west init -l)..."
+      west init -l zephyr
+      cd "$WORKDIR"
+    fi
   fi
 
-  source "$WORKDIR/.venv/bin/activate"
-  cd "$WORKDIR/zephyrproject"
+  info "west update（淺層，防斷線）..."
+  cd "$ZEPHYR_DIR"
   west update --narrow -o=--depth=1
   cd "$WORKDIR"
   success "第二階段完成"
